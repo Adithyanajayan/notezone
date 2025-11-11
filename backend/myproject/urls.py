@@ -17,8 +17,22 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
+from django.shortcuts import redirect
+from django.http import HttpRequest
+
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
+def landing_redirect(request: HttpRequest):
+    return redirect('http://localhost:3000/')
+
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("api/", include("myapp.urls")),
+    path('', landing_redirect),
+    path('admin/', admin.site.urls),
+    path('api/', include('myapp.urls')),
+    path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
+

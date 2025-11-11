@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import api from '../api';
 
 const Register = () => {
     const [formData, setFormData] = useState({
-        name: '',
+        first_name: '',
+        last_name: '',
         email: '',
         password: '',
         confirmPassword: ''
     });
+    const [error, setError] = useState('');
+    const [message, setMessage] = useState('');
     const navigate = useNavigate();
 
     const handleChange = (e) => {
@@ -17,11 +21,32 @@ const Register = () => {
         });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Add registration logic here
-        console.log('Registration data:', formData);
-        navigate('/login');
+
+        if (formData.password !== formData.confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+
+        try {
+            const response = await api.post('register/', {
+                first_name: formData.first_name,
+                last_name: formData.last_name,
+                email: formData.email,
+                password: formData.password
+            });
+
+            console.log('Response:', response.data);
+            setMessage('Registration successful!');
+            setError('');
+
+            // Optionally, navigate after success
+            setTimeout(() => navigate('/login'), 1000);
+        } catch (err) {
+            console.error(err.response?.data || err.message);
+            setError('Registration failed. Please check your details.');
+        }
     };
 
     return (
@@ -30,11 +55,21 @@ const Register = () => {
                 <h2>Register</h2>
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
-                        <label>Full Name</label>
+                        <label>First Name</label>
                         <input
                             type="text"
-                            name="name"
-                            value={formData.name}
+                            name="first_name"
+                            value={formData.first_name}
+                            onChange={handleChange}
+                            required
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>Last Name</label>
+                        <input
+                            type="text"
+                            name="last_name"
+                            value={formData.last_name}
                             onChange={handleChange}
                             required
                         />
@@ -69,6 +104,8 @@ const Register = () => {
                             required
                         />
                     </div>
+                    {error && <p className="error-text">{error}</p>}
+                    {message && <p className="success-text">{message}</p>}
                     <button type="submit" className="btn primary-btn">Register</button>
                 </form>
                 <p>Already have an account? <Link to="/login">Login here</Link></p>

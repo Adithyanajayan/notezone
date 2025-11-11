@@ -1,39 +1,81 @@
-from django.shortcuts import render
-
-from rest_framework.decorators import api_view
+from rest_framework import status, viewsets
 from rest_framework.response import Response
-from rest_framework import status
-from fpdf import FPDF
-from io import BytesIO
-from django.http import FileResponse
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
+from .models import CustomUser, Notes, Subject
+from .serializers import (
+    RegisterSerializer,
+    LoginSerializer,
+    NotesSerializer,
+    SubjectSerializer
+)
 
-@api_view(["POST"])
-def text_to_pdf_api(request):
-    """
-    Accepts text input as JSON and returns a generated PDF file.
-    """
-    user_text = request.data.get("text", "")
+# ---------------- TOKEN GENERATOR ----------------
+def get_tokens_for_user(user):
+    """Generate JWT access and refresh tokens for a user"""
+    refresh = RefreshToken.for_user(user)
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
 
-    if not user_text.strip():
-        return Response(
-            {"error": "No text provided."},
-            status=status.HTTP_400_BAD_REQUEST
-        )
 
-    # Create PDF
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 10, user_text)
+# ---------------- REGISTER VIEW ----------------
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
 
-    # Save to memory
-    buffer = BytesIO()
-    pdf.output(buffer)
-    buffer.seek(0)
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            tokens = get_tokens_for_user(user)
+            return Response({
+                'user': {
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                },
+                'tokens': tokens,
+                'message': 'User registered successfully!'
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # Return PDF file as response
-    response = FileResponse(buffer, content_type='application/pdf')
-    response["Content-Disposition"] = 'attachment; filename="generated.pdf"'
-    return response
 
+# ---------------- LOGIN VIEW ----------------
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            tokens = get_tokens_for_user(user)
+            return Response({
+                'user': {
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'role': user.role,
+                },
+                'tokens': tokens,
+                'message': 'Login successful!'
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ---------------- SUBJECT VIEWSET ----------------
+class SubjectViewSet(viewsets.ModelViewSet):
+    queryset = Subject.objects.all()
+    serializer_class = SubjectSerializer
+    permission_classes = [IsAuthenticated]
+
+
+# ---------------- NOTES VIEWSET ----------------
+class NotesViewSet(viewsets.ModelViewSet):
+    queryset = Notes.objects.all()
+    serializer_class = NotesSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(uploader=self.request.user)

@@ -1,9 +1,15 @@
-from django.contrib import admin
-from django.urls import path
-from myapp import views
+
+
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import RegisterView, LoginView, SubjectViewSet, NotesViewSet
+
+router = DefaultRouter()
+router.register(r'subjects', SubjectViewSet)
+router.register(r'notes', NotesViewSet)
 
 urlpatterns = [
-    path("api/text-to-pdf/", views.text_to_pdf_api, name="text_to_pdf_api"),
-    
+    path('', include(router.urls)),
+    path('register/', RegisterView.as_view(), name='register'),
+    path('login/', LoginView.as_view(), name='login'),
 ]
-

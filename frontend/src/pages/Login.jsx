@@ -1,29 +1,35 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import api from '../api';
 
 const Login = ({ onLogin }) => {
-    const [formData, setFormData] = useState({
-        email: '',
-        password: ''
-    });
+    const [formData, setFormData] = useState({ email: '', password: '' });
+    const [error, setError] = useState('');
     const navigate = useNavigate();
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+        setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Add login logic here
-        const userData = {
-            name: 'John Doe',
-            email: formData.email
-        };
-        onLogin(userData);
-        navigate('/dashboard');
+        try {
+            const response = await api.post('login/', formData);
+
+            // Save tokens locally
+            localStorage.setItem('access', response.data.tokens.access);
+            localStorage.setItem('refresh', response.data.tokens.refresh);
+
+            // Save user info
+            const user = response.data.user;
+            localStorage.setItem('user', JSON.stringify(user));
+
+            onLogin(user);
+            navigate('/dashboard');
+        } catch (err) {
+            console.error(err.response?.data || err.message);
+            setError('Invalid email or password');
+        }
     };
 
     return (
@@ -51,9 +57,10 @@ const Login = ({ onLogin }) => {
                             required
                         />
                     </div>
+                    {error && <p className="error-text">{error}</p>}
                     <button type="submit" className="btn primary-btn">Login</button>
                 </form>
-                <p>Don't have an account? <Link to="/register">Register here</Link></p>
+                <p>Don’t have an account? <Link to="/register">Register here</Link></p>
             </div>
         </div>
     );
