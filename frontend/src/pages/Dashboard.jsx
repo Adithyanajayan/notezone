@@ -1,30 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import NoteCard from '../components/NoteCard';
+import axios from 'axios';
 
 const Dashboard = () => {
-    const [recentNotes, setRecentNotes] = useState([
-        {
-            id: 1,
-            title: 'React Fundamentals',
-            description: 'Complete guide to React basics',
-            category: 'Programming',
-            rating: 4.5,
-            downloads: 120
-        },
-        {
-            id: 2,
-            title: 'JavaScript ES6+',
-            description: 'Modern JavaScript features',
-            category: 'Programming',
-            rating: 4.2,
-            downloads: 89
-        }
-    ]);
+    const [recentNotes, setRecentNotes] = useState([]);
+    const [stats, setStats] = useState({
+        total_notes: 0,
+        total_downloads: 0,
+        average_rating: 0
+    });
 
-    const handleDownload = (noteId) => {
-        // Add download logic here
-        console.log('Downloading note:', noteId);
+    useEffect(() => {
+        fetchRecentNotes();
+        fetchStats();
+    }, []);
+
+    const fetchRecentNotes = async () => {
+        try {
+            const res = await axios.get("http://127.0.0.1:8000/api/recent-notes/");
+            setRecentNotes(res.data);
+        } catch (error) {
+            console.log(error);
+        }
+    };
+
+    const fetchStats = async () => {
+        try {
+            const res = await axios.get("http://127.0.0.1:8000/api/dashboard-stats/");
+            setStats(res.data);
+        } catch (error) {
+            console.log(error);
+        }
+    };
+
+    const handleDownload = async (noteId) => {
+        try {
+            await axios.post(`http://127.0.0.1:8000/api/download/${noteId}/`);
+            fetchStats();  // refresh stats after download
+        } catch (error) {
+            console.log(error);
+        }
     };
 
     return (
@@ -46,7 +62,7 @@ const Dashboard = () => {
                             <NoteCard
                                 key={note.id}
                                 note={note}
-                                onDownload={handleDownload}
+                                onDownload={() => handleDownload(note.id)}
                             />
                         ))}
                     </div>
@@ -55,15 +71,15 @@ const Dashboard = () => {
                 <div className="stats">
                     <div className="stat-card">
                         <h3>Total Notes</h3>
-                        <p>45</p>
+                        <p>{stats.total_notes}</p>
                     </div>
                     <div className="stat-card">
                         <h3>Downloads</h3>
-                        <p>156</p>
+                        <p>{stats.total_downloads}</p>
                     </div>
                     <div className="stat-card">
                         <h3>Average Rating</h3>
-                        <p>4.3/5</p>
+                        <p>{stats.average_rating}/5</p>
                     </div>
                 </div>
             </div>

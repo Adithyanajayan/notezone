@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const AddNote = () => {
     const [noteData, setNoteData] = useState({
         title: '',
         description: '',
-        category: '',
+        subject: '',
         file: null
     });
+
+
     const navigate = useNavigate();
 
     const handleChange = (e) => {
@@ -25,11 +28,33 @@ const AddNote = () => {
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Add note submission logic here
-        console.log('Note data:', noteData);
-        navigate('/dashboard');
+
+        const formData = new FormData();
+        formData.append("title", noteData.title);
+        formData.append("description", noteData.description);
+        formData.append("subject", noteData.subject);
+        formData.append("file", noteData.file);
+
+        try {
+            const token = localStorage.getItem("access");
+
+            await axios.post(
+                "http://127.0.0.1:8000/api/notes/",
+                formData,
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                        "Authorization": `Bearer ${token}`
+                    }
+                }
+            );
+
+            navigate('/dashboard');
+        } catch (error) {
+            console.error("Upload failed", error.response?.data);
+        }
     };
 
     return (
@@ -63,17 +88,19 @@ const AddNote = () => {
                     <div className="form-group">
                         <label>Category</label>
                         <select
-                            name="category"
-                            value={noteData.category}
+                            name="subject"
+                            value={noteData.subject}
                             onChange={handleChange}
                             required
                         >
-                            <option value="">Select Category</option>
-                            <option value="Programming">Programming</option>
-                            <option value="Mathematics">Mathematics</option>
-                            <option value="Science">Science</option>
-                            <option value="Literature">Literature</option>
+                            <option value="">Select Subject</option>
+                            <option value="1">Programming</option>
+                            <option value="2">Mathematics</option>
+                            <option value="3">Science</option>
+                            <option value="4">Literature</option>
+
                         </select>
+
                     </div>
 
                     <div className="form-group">

@@ -50,8 +50,9 @@ class SubjectSerializer(serializers.ModelSerializer):
 
 class NotesSerializer(serializers.ModelSerializer):
     uploader = serializers.StringRelatedField(read_only=True)
-    subject = SubjectSerializer(read_only=True)
 
     class Meta:
         model = Notes
         fields = ['id', 'title', 'description', 'file', 'subject', 'uploader', 'uploaded_at']
+        read_only_fields = ['uploader', 'uploaded_at']
+

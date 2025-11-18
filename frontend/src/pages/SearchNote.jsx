@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import NoteCard from '../components/NoteCard';
+import api from '../api';
+
 
 const SearchNotes = () => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -10,33 +12,43 @@ const SearchNotes = () => {
         sortBy: 'relevance'
     });
 
-    const handleSearch = (e) => {
+    const handleSearch = async (e) => {
         e.preventDefault();
-        // Add search logic here
-        const mockResults = [
-            {
-                id: 1,
-                title: 'React Hooks',
-                description: 'Understanding React Hooks',
-                category: 'Programming',
-                rating: 4.7,
-                downloads: 200
-            },
-            {
-                id: 2,
-                title: 'Node.js Basics',
-                description: 'Introduction to Node.js',
-                category: 'Backend',
-                rating: 4.3,
-                downloads: 150
-            }
-        ];
-        setSearchResults(mockResults);
+
+        try {
+            const response = await api.get("search-notes/", {
+                params: {
+                    search: searchTerm,
+                    category: filters.category,
+                    rating: filters.rating,
+                    sort: filters.sortBy
+                }
+            });
+
+            setSearchResults(response.data);
+
+        } catch (error) {
+            console.error("Search failed", error.response?.data || error.message);
+        }
     };
 
-    const handleDownload = (noteId) => {
-        console.log('Downloading note:', noteId);
+
+    
+
+    const handleDownload = async (noteId) => {
+        try {
+            const token = localStorage.getItem("access");
+
+            await api.post(`notes/${noteId}/download/`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            console.log("Download counted!");
+        } catch (error) {
+            console.error("Download failed", error.response?.data || error);
+        }
     };
+
 
     return (
         <div className="search-notes">
