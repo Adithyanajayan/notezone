@@ -12,7 +12,7 @@ from rest_framework.decorators import api_view
 from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import api_view, permission_classes
-
+from django.http import FileResponse
 
 
 from .serializers import NotesSerializer
@@ -112,15 +112,28 @@ def dashboard_stats(request):
     })
 
 
-@api_view(['POST'])
+from django.http import FileResponse, Http404
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def download_note(request, pk):
     try:
         note = Notes.objects.get(id=pk)
+
+        # increment downloads
         note.downloads += 1
         note.save()
-        return Response({"message": "Download counted!"}, status=status.HTTP_200_OK)
+
+        # return file
+        file_handle = note.file.open()
+        response = FileResponse(file_handle, as_attachment=True, filename=note.file.name.split('/')[-1])
+        return response
+
     except Notes.DoesNotExist:
-        return Response({"error": "Note not found"}, status=status.HTTP_404_NOT_FOUND)
+        raise Http404("Note not found")
+
 
 class AddNoteView(APIView):
     permission_classes = [IsAuthenticated]
@@ -173,3 +186,57 @@ def search_notes(request):
 
     serializer = NotesSerializer(notes, many=True)
     return Response(serializer.data)
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from reportlab.pdfgen import canvas
+from django.core.files.base import ContentFile
+from .models import Notes, Subject
+from io import BytesIO
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_note_from_text(request):
+    title = request.data.get("title")
+    subject_id = request.data.get("subject")
+    content = request.data.get("content")
+
+    if not title or not subject_id or not content:
+        return Response({"error": "Missing fields"}, status=400)
+
+    try:
+        subject = Subject.objects.get(id=subject_id)
+    except Subject.DoesNotExist:
+        return Response({"error": "Invalid subject"}, status=400)
+
+    # Generate PDF in memory
+    pdf_buffer = BytesIO()
+    p = canvas.Canvas(pdf_buffer)
+    text_object = p.beginText(40, 800)
+    text_object.setFont("Helvetica", 12)
+
+    for line in content.split("\n"):
+        text_object.textLine(line)
+
+    p.drawText(text_object)
+    p.save()
+
+    pdf_buffer.seek(0)
+
+    # Save PDF file to the Notes model
+    file_name = f"{title}.pdf"
+    note = Notes.objects.create(
+        uploader=request.user,
+        subject=subject,
+        title=title,
+        description="Generated PDF from text"
+    )
+    note.file.save(file_name, ContentFile(pdf_buffer.read()))
+    note.save()
+
+    return Response({
+        "message": "PDF created successfully",
+        "note_id": note.id,
+        "file_url": note.file.url
+    }, status=201)

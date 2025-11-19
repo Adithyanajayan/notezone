@@ -1,26 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../api';
 
 const CreateNote = () => {
+    const [subjects, setSubjects] = useState([]);
     const [noteData, setNoteData] = useState({
         title: '',
-        category: '',
+        subject: '',
         content: ''
     });
+
     const navigate = useNavigate();
 
-    const handleChange = (e) => {
-        setNoteData({
-            ...noteData,
-            [e.target.name]: e.target.value
-        });
+    useEffect(() => {
+        loadSubjects();
+    }, []);
+
+    const loadSubjects = async () => {
+        try {
+            const token = localStorage.getItem("access");
+            const res = await api.get("subjects/", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setSubjects(res.data);
+        } catch (err) {
+            console.error("Failed to load subjects", err);
+        }
     };
 
-    const handleSubmit = (e) => {
+    const handleChange = (e) => {
+        setNoteData({ ...noteData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Add note creation logic here
-        console.log('Created note:', noteData);
-        navigate('/dashboard');
+
+        try {
+            const token = localStorage.getItem("access");
+
+            const res = await api.post(
+                "notes/create-from-text/",
+                noteData,
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+
+            const downloadUrl = res.data.file_url;
+            const link = document.createElement("a");
+            link.href = downloadUrl;
+            link.download = `${noteData.title}.pdf`;
+            link.click();
+
+            navigate('/dashboard');
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+        }
     };
 
     return (
@@ -30,7 +65,7 @@ const CreateNote = () => {
 
                 <form onSubmit={handleSubmit} className="note-form">
                     <div className="form-group">
-                        <label>Note Title</label>
+                        <label>Title</label>
                         <input
                             type="text"
                             name="title"
@@ -41,43 +76,32 @@ const CreateNote = () => {
                     </div>
 
                     <div className="form-group">
-                        <label>Category</label>
+                        <label>Subject</label>
                         <select
-                            name="category"
-                            value={noteData.category}
+                            name="subject"
+                            value={noteData.subject}
                             onChange={handleChange}
                             required
                         >
-                            <option value="">Select Category</option>
-                            <option value="Programming">Programming</option>
-                            <option value="Mathematics">Mathematics</option>
-                            <option value="Science">Science</option>
-                            <option value="Literature">Literature</option>
+                            <option value="">Select Subject</option>
+                            {subjects.map((sub) => (
+                                <option key={sub.id} value={sub.id}>{sub.name}</option>
+                            ))}
                         </select>
                     </div>
 
                     <div className="form-group">
-                        <label>Note Content</label>
+                        <label>Content</label>
                         <textarea
                             name="content"
+                            rows="15"
                             value={noteData.content}
                             onChange={handleChange}
-                            rows="20"
-                            placeholder="Start writing your note here..."
                             required
                         />
                     </div>
 
-                    <div className="form-actions">
-                        <button type="submit" className="btn primary-btn">Create Note</button>
-                        <button
-                            type="button"
-                            className="btn secondary-btn"
-                            onClick={() => navigate('/dashboard')}
-                        >
-                            Cancel
-                        </button>
-                    </div>
+                    <button type="submit" className="btn primary-btn">Generate PDF</button>
                 </form>
             </div>
         </div>
@@ -85,4 +109,3 @@ const CreateNote = () => {
 };
 
 export default CreateNote;
-

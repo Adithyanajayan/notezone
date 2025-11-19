@@ -39,15 +39,39 @@ const SearchNotes = () => {
         try {
             const token = localStorage.getItem("access");
 
-            await api.post(`notes/${noteId}/download/`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
+            const response = await api.get(`notes/${noteId}/download/`, {
+                responseType: "blob",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
             });
 
-            console.log("Download counted!");
+            // Create local download
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement("a");
+            link.href = url;
+
+            // Get filename from response header
+            const contentDisposition = response.headers["content-disposition"];
+            let filename = "note.pdf";
+
+            if (contentDisposition) {
+                const match = contentDisposition.match(/filename="(.+)"/);
+                if (match) filename = match[1];
+            }
+
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            console.log("Download successful!");
+
         } catch (error) {
             console.error("Download failed", error.response?.data || error);
         }
     };
+
 
 
     return (

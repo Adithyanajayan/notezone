@@ -10,6 +10,7 @@ router.register(r'subjects', SubjectViewSet)
 router.register(r'notes', NotesViewSet)
 
 urlpatterns = [
+    path("notes/create-from-text/", views.create_note_from_text),
     path('', include(router.urls)),
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', LoginView.as_view(), name='login'),
@@ -18,4 +19,6 @@ urlpatterns = [
     path("notes/<int:pk>/download/", views.download_note, name="download-note"),
     path('notes/add/', AddNoteView.as_view(), name="add-note"),
     path("search-notes/", views.search_notes, name="search-notes"),
+    
+
 ]
